@@ -1,0 +1,10 @@
+{
+  "name": "project-claude-mosh",
+  "private": true,
+  "workspaces": ["client", "server"],
+  "scripts": {
+    "dev": "~/.bun/bin/bun run --filter '*' dev",
+    "build": "~/.bun/bin/bun run --filter '*' build",
+    "lint": "~/.bun/bin/bun run --filter '*' lint"
+  }
+}
