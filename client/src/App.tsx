@@ -1,24 +1,21 @@
-import { useEffect, useState } from "react";
-import { Routes, Route } from "react-router-dom";
-
-function HealthCheck() {
-  const [status, setStatus] = useState<string | null>(null);
-
-  useEffect(() => {
-    fetch("http://localhost:3000/api/health")
-      .then((res) => res.json())
-      .then((data) => setStatus(data.status))
-      .catch(() => setStatus("error"));
-  }, []);
-
-  return <div>Server status: {status ?? "loading..."}</div>;
-}
+import { Routes, Route, Navigate } from "react-router-dom";
+import { LoginPage } from "./pages/LoginPage";
+import { HomePage } from "./pages/HomePage";
+import { ProtectedRoute } from "./components/ProtectedRoute";
 
 export function App() {
   return (
     <Routes>
-      <Route path="/" element={<HealthCheck />} />
-      <Route path="*" element={<div>404 — Not Found</div>} />
+      <Route path="/login" element={<LoginPage />} />
+      <Route
+        path="/"
+        element={
+          <ProtectedRoute>
+            <HomePage />
+          </ProtectedRoute>
+        }
+      />
+      <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>
   );
 }

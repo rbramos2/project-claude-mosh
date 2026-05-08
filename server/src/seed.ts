@@ -1,7 +1,7 @@
 import "dotenv/config";
 import { auth } from "./lib/auth";
 import prisma from "./lib/prisma";
-import { Role } from "./generated/prisma";
+import { Role } from "./generated/prisma/enums";
 
 const email = process.env.SEED_ADMIN_EMAIL;
 const password = process.env.SEED_ADMIN_PASSWORD;
