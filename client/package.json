@@ -9,12 +9,15 @@
     "lint": "tsc --noEmit"
   },
   "dependencies": {
+    "@hookform/resolvers": "^5.2.2",
     "@tailwindcss/vite": "^4.2.4",
     "better-auth": "^1.6.9",
     "react": "^19.1.0",
     "react-dom": "^19.1.0",
+    "react-hook-form": "^7.75.0",
     "react-router-dom": "^7.6.0",
-    "tailwindcss": "^4.2.4"
+    "tailwindcss": "^4.2.4",
+    "zod": "^4.4.3"
   },
   "devDependencies": {
     "@types/react": "^19.1.3",
