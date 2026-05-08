@@ -31,6 +31,28 @@ An internal AI-powered email support tool. It reads Gmail inboxes, classifies su
 
 > Full details: `project-scope.md`, `tech-stack.md`, `implementation-plan.md`
 
+## Authentication
+
+**Library:** Better Auth with Prisma adapter (PostgreSQL)
+
+**Key decisions:**
+- Sign-up is disabled — users are provisioned by an admin (seed script or future admin UI)
+- `User` model extended with `role: "admin" | "agent"` (default `"agent"`, not user-settable on input)
+
+**Server** (`server/src/lib/auth.ts`):
+- Exports `auth` instance and `Session` type
+- Handler mounted at `/api/auth/*` via `toNodeHandler(auth)` in `server/src/app.ts`
+- Trusted origins loaded from `TRUSTED_ORIGINS` env var (comma-separated)
+- CORS allows `localhost:5173` and `localhost:5174` with credentials
+
+**Client** (`client/src/lib/auth-client.ts`):
+- Exports `authClient`, `signIn`, `signOut`, `useSession`
+- Login form uses `react-hook-form` + Zod + `signIn.email()`
+
+**Seed:** `server/src/seed.ts` — creates the initial admin user
+
+---
+
 ## Documentation Lookup with Context7
 
 Use Context7 MCP to fetch current documentation whenever questions arise about a library, framework, SDK, API, CLI tool, or cloud service — even well-known ones like React, Next.js, Prisma, Express, Tailwind, Django, or Spring Boot. This includes API syntax, configuration, version migration, library-specific debugging, setup instructions, and CLI tool usage. Use even when you think you know the answer — training data may not reflect recent changes. Prefer this over web search for library docs.
