@@ -4,3 +4,5 @@ dist/
 .env.local
 *.js.map
 bun.lockb
+playwright-report/
+test-results/

@@ -86,7 +86,9 @@ An internal AI-powered email support tool. It reads Gmail inboxes, classifies su
 - `bun run test:e2e` — run tests headless
 - `bun run test:e2e:ui` — run with Playwright UI
 
-**Test credentials:** `admin@example.com` / `password123` (role: admin)
+**Test credentials:** `admin@example.com` / `password123` (role: admin), `agent@example.com` / `password123` (role: agent)
+
+**Writing tests:** Always use the `playwright-e2e-writer` agent to write E2E tests. Invoke it after implementing a feature or when the user asks for tests. It has full context on the test setup, credentials, fixtures, and project conventions.
 
 ---
 

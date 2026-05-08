@@ -14,6 +14,9 @@ const env = {
   SEED_ADMIN_EMAIL: "admin@example.com",
   SEED_ADMIN_PASSWORD: "password123",
   SEED_ADMIN_NAME: "Admin",
+  SEED_AGENT_EMAIL: "agent@example.com",
+  SEED_AGENT_PASSWORD: "password123",
+  SEED_AGENT_NAME: "Agent",
 };
 
 export default async function globalSetup() {
@@ -24,6 +27,12 @@ export default async function globalSetup() {
   });
 
   execSync("~/.bun/bin/bun run src/seed.ts", {
+    cwd: serverDir,
+    env,
+    stdio: "inherit",
+  });
+
+  execSync("~/.bun/bin/bun run src/seed-agent.ts", {
     cwd: serverDir,
     env,
     stdio: "inherit",
