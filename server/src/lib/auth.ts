@@ -11,6 +11,22 @@ export const auth = betterAuth({
     enabled: true,
     disableSignUp: true,
   },
+  rateLimit: {
+    window: 60,
+    max: 10,
+    storage: "database",
+  },
+  session: {
+    expiresIn: 60 * 60 * 8,
+    updateAge: 60 * 60,
+    cookieCache: {
+      enabled: true,
+      maxAge: 60 * 5,
+    },
+  },
+  advanced: {
+    useSecureCookies: process.env.NODE_ENV === "production",
+  },
   user: {
     additionalFields: {
       role: {
