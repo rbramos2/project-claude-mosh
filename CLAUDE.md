@@ -9,10 +9,11 @@ An internal AI-powered email support tool. It reads Gmail inboxes, classifies su
 ## Tech Stack
 
 - **Frontend:** React + TypeScript + Vite, Tailwind CSS, React Router
-- **Backend:** Node.js + Express + TypeScript, session-based auth
+- **Backend:** Node.js + Express + TypeScript, Better Auth
 - **Database:** PostgreSQL + Prisma ORM
 - **AI:** Claude API (Anthropic) — classification, response generation, confidence scoring, summaries
 - **Email:** Gmail API with Google OAuth 2.0 + Pub/Sub push notifications
+- **Testing:** Playwright (E2E), separate `helpdesk_test` PostgreSQL database
 
 ## Implementation Phases (see `implementation-plan.md`)
 
@@ -42,14 +43,50 @@ An internal AI-powered email support tool. It reads Gmail inboxes, classifies su
 **Server** (`server/src/lib/auth.ts`):
 - Exports `auth` instance and `Session` type
 - Handler mounted at `/api/auth/*` via `toNodeHandler(auth)` in `server/src/app.ts`
-- Trusted origins loaded from `TRUSTED_ORIGINS` env var (comma-separated)
-- CORS allows `localhost:5173` and `localhost:5174` with credentials
+- Trusted origins and CORS both read from `TRUSTED_ORIGINS` env var (comma-separated)
+- Rate limiting enabled in production only (`rateLimit.enabled: process.env.NODE_ENV === "production"`)
+- Session: 8-hour expiry; `useSecureCookies` enabled in production
+- Startup guard in `server/src/index.ts` rejects weak `BETTER_AUTH_SECRET` (< 32 chars)
 
 **Client** (`client/src/lib/auth-client.ts`):
 - Exports `authClient`, `signIn`, `signOut`, `useSession`
+- Uses `inferAdditionalFields<typeof auth>()` plugin so `session.user.role` is correctly typed
 - Login form uses `react-hook-form` + Zod + `signIn.email()`
 
-**Seed:** `server/src/seed.ts` — creates the initial admin user
+**Authorization middleware** (`server/src/middleware/requireAuth.ts`):
+- `requireAuth` — rejects unauthenticated requests with 401
+- `requireAdmin` — rejects non-admin requests with 403
+- Both use `auth.api.getSession()` server-side; attach `session` to `req` for downstream handlers
+- Apply to all future API routes — client-side `AdminRoute` is UX only, not the security boundary
+
+**Route guards** (client):
+- `ProtectedRoute` — redirects to `/login` if no session
+- `AdminRoute` — redirects to `/` if not admin, to `/login` if unauthenticated
+
+**Seed:** `server/src/seed.ts` — creates the initial admin user (`bun run seed`)
+
+**Admin pages:**
+- `/users` — admin-only page (wrapped in `AdminRoute`); Navbar shows "Users" link for admins only
+
+---
+
+## Testing
+
+**Framework:** Playwright (`@playwright/test`) — installed at root, chromium browser
+
+**Test database:** `helpdesk_test` (separate PostgreSQL DB, migrated and seeded before each run)
+
+**Config:** `playwright.config.ts` (root) — 1 worker, chromium, webServer auto-starts both servers with test env vars
+
+**Global setup:** `e2e/global-setup.ts` — runs `prisma migrate deploy` + seed script against `helpdesk_test`
+
+**Test env:** `server/.env.test` (gitignored) — test DB URL, test auth secret, seed credentials
+
+**Scripts:**
+- `bun run test:e2e` — run tests headless
+- `bun run test:e2e:ui` — run with Playwright UI
+
+**Test credentials:** `admin@example.com` / `password123` (role: admin)
 
 ---
 
