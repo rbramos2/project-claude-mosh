@@ -192,7 +192,38 @@ export function UsersPage() {
         )}
 
         {isLoading ? (
-          <p className="text-sm text-gray-500">Loading...</p>
+          <div className="bg-white border border-gray-200 rounded-xl shadow-sm overflow-hidden">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="border-b border-gray-200 bg-gray-50">
+                  <th className="text-left px-4 py-3 font-medium text-gray-600">Name</th>
+                  <th className="text-left px-4 py-3 font-medium text-gray-600">Email</th>
+                  <th className="text-left px-4 py-3 font-medium text-gray-600">Role</th>
+                  <th className="text-left px-4 py-3 font-medium text-gray-600">Joined</th>
+                  <th className="px-4 py-3" />
+                </tr>
+              </thead>
+              <tbody>
+                {Array.from({ length: 4 }).map((_, i) => (
+                  <tr key={i} className="border-b border-gray-100 last:border-0">
+                    <td className="px-4 py-3">
+                      <div className="h-4 w-28 rounded bg-gray-200 animate-pulse" />
+                    </td>
+                    <td className="px-4 py-3">
+                      <div className="h-4 w-44 rounded bg-gray-200 animate-pulse" />
+                    </td>
+                    <td className="px-4 py-3">
+                      <div className="h-5 w-14 rounded-full bg-gray-200 animate-pulse" />
+                    </td>
+                    <td className="px-4 py-3">
+                      <div className="h-4 w-20 rounded bg-gray-200 animate-pulse" />
+                    </td>
+                    <td className="px-4 py-3" />
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
         ) : fetchError ? (
           <p className="text-sm text-red-600">{apiError(fetchError)}</p>
         ) : (
