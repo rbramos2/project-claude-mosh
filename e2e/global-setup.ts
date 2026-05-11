@@ -26,6 +26,12 @@ export default async function globalSetup() {
     stdio: "inherit",
   });
 
+  execSync("~/.bun/bin/bun run src/cleanup-test-users.ts", {
+    cwd: serverDir,
+    env,
+    stdio: "inherit",
+  });
+
   execSync("~/.bun/bin/bun run src/seed.ts", {
     cwd: serverDir,
     env,

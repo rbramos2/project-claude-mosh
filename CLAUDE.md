@@ -8,7 +8,7 @@ An internal AI-powered email support tool. It reads Gmail inboxes, classifies su
 
 ## Tech Stack
 
-- **Frontend:** React + TypeScript + Vite, Tailwind CSS, React Router
+- **Frontend:** React + TypeScript + Vite, Tailwind CSS, React Router, Axios, TanStack Query
 - **Backend:** Node.js + Express + TypeScript, Better Auth
 - **Database:** PostgreSQL + Prisma ORM
 - **AI:** Claude API (Anthropic) — classification, response generation, confidence scoring, summaries
@@ -64,6 +64,23 @@ An internal AI-powered email support tool. It reads Gmail inboxes, classifies su
 - `AdminRoute` — redirects to `/` if not admin, to `/login` if unauthenticated
 
 **Seed:** `server/src/seed.ts` — creates the initial admin user (`bun run seed`)
+
+---
+
+## Data Fetching (Frontend)
+
+All frontend API calls must use **Axios** and **TanStack Query**.
+
+**Axios** (`client/src/`):
+- Create a module-level instance: `const api = axios.create({ baseURL: "/api", withCredentials: true })`
+- Extract error messages with a helper: `if (e instanceof AxiosError) return e.response?.data?.error ?? e.message`
+- Never use `fetch` directly
+
+**TanStack Query** (`@tanstack/react-query`):
+- `QueryClientProvider` is mounted in `client/src/main.tsx` with `retry: false`
+- Use `useQuery` for reads, `useMutation` for writes
+- Update the cache in `onSuccess` via `useQueryClient().setQueryData` — avoid redundant re-fetches
+- Expose errors through `onError` or the `error` return value; never swallow them silently
 
 **Admin pages:**
 - `/users` — admin-only page (wrapped in `AdminRoute`); Navbar shows "Users" link for admins only

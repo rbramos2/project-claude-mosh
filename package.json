@@ -11,5 +11,8 @@
   },
   "devDependencies": {
     "@playwright/test": "^1.59.1"
+  },
+  "dependencies": {
+    "@tanstack/react-query": "^5.100.10"
   }
 }
