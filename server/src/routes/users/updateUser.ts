@@ -14,7 +14,7 @@ export const updateUser: RequestHandler = async (req, res) => {
 
   const { name, email, password } = result.data;
 
-  const target = await prisma.user.findUnique({ where: { id } });
+  const target = await prisma.user.findFirst({ where: { id, deletedAt: null } });
   if (!target) {
     res.status(404).json({ error: "User not found" });
     return;

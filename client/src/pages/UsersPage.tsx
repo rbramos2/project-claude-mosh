@@ -52,6 +52,7 @@ export function UsersPage() {
   const [modalUser, setModalUser] = useState<User | "new" | null>(null);
   const [modalError, setModalError] = useState<string | null>(null);
   const [actionError, setActionError] = useState<string | null>(null);
+  const [deleteConfirm, setDeleteConfirm] = useState<User | null>(null);
 
   const isEditMode = modalUser !== null && modalUser !== "new";
   const isOpen = modalUser !== null;
@@ -120,10 +121,7 @@ export function UsersPage() {
     onError: (e) => setActionError(apiError(e)),
   });
 
-  const handleDelete = (userId: string) => {
-    if (!confirm("Delete this user? This cannot be undone.")) return;
-    deleteMutation.mutate(userId);
-  };
+  const handleDelete = (user: User) => setDeleteConfirm(user);
 
   const closeModal = () => {
     setModalUser(null);
@@ -284,6 +282,42 @@ export function UsersPage() {
           </div>
         )}
 
+        {deleteConfirm && (
+          <div
+            data-testid="delete-modal-backdrop"
+            className="fixed inset-0 z-50 flex items-center justify-center bg-black/40"
+            onClick={(e) => { if (e.target === e.currentTarget) setDeleteConfirm(null); }}
+          >
+            <div className="bg-white rounded-xl shadow-lg w-full max-w-sm mx-4 p-6">
+              <h2 className="text-base font-semibold text-gray-800 mb-2">Delete User</h2>
+              <p className="text-sm text-gray-600 mb-6">
+                Are you sure you want to delete <span className="font-medium text-gray-900">{deleteConfirm.name}</span>? This cannot be undone.
+              </p>
+              <div className="flex justify-end gap-2">
+                <button
+                  type="button"
+                  onClick={() => setDeleteConfirm(null)}
+                  className="text-sm px-4 py-2 rounded-md border border-gray-300 text-gray-700 hover:bg-gray-50 transition-colors"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  disabled={deleteMutation.isPending}
+                  onClick={() => {
+                    deleteMutation.mutate(deleteConfirm.id, {
+                      onSuccess: () => setDeleteConfirm(null),
+                    });
+                  }}
+                  className="text-sm px-4 py-2 rounded-md bg-red-600 hover:bg-red-700 disabled:opacity-50 text-white font-medium transition-colors"
+                >
+                  {deleteMutation.isPending ? "Deleting..." : "Delete"}
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
         {actionError && (
           <p className="text-sm text-red-600 mb-4">{actionError}</p>
         )}
@@ -385,7 +419,7 @@ export function UsersPage() {
                           </button>
                           {!isSelf && (
                             <button
-                              onClick={() => handleDelete(user.id)}
+                              onClick={() => handleDelete(user)}
                               disabled={isDeleting}
                               className="text-xs px-2 py-1 rounded-md text-red-600 hover:bg-red-50 disabled:opacity-50 transition-colors"
                             >

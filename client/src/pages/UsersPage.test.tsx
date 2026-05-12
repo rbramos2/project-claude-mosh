@@ -467,14 +467,38 @@ describe("role change", () => {
 // ---------------------------------------------------------------------------
 
 describe("delete user", () => {
+  it("shows a confirmation modal when Delete is clicked", async () => {
+    renderPage();
+    await screen.findByText("agent@example.com");
+
+    const agentRow = screen.getByText("agent@example.com").closest("tr")!;
+    await userEvent.click(within(agentRow).getByRole("button", { name: "Delete" }));
+
+    const modal = screen.getByTestId("delete-modal-backdrop");
+    expect(within(modal).getByRole("heading", { name: "Delete User" })).toBeInTheDocument();
+    expect(within(modal).getByText(/Agent/)).toBeInTheDocument();
+  });
+
+  it("dismisses the modal without deleting when Cancel is clicked", async () => {
+    renderPage();
+    await screen.findByText("agent@example.com");
+
+    const agentRow = screen.getByText("agent@example.com").closest("tr")!;
+    await userEvent.click(within(agentRow).getByRole("button", { name: "Delete" }));
+    await userEvent.click(within(screen.getByTestId("delete-modal-backdrop")).getByRole("button", { name: "Cancel" }));
+
+    expect(mockDelete).not.toHaveBeenCalled();
+    expect(screen.queryByRole("heading", { name: "Delete User" })).not.toBeInTheDocument();
+  });
+
   it("removes the row after confirming deletion", async () => {
-    vi.spyOn(window, "confirm").mockReturnValue(true);
     mockDelete.mockResolvedValue({});
     renderPage();
     await screen.findByText("agent@example.com");
 
     const agentRow = screen.getByText("agent@example.com").closest("tr")!;
     await userEvent.click(within(agentRow).getByRole("button", { name: "Delete" }));
+    await userEvent.click(within(screen.getByTestId("delete-modal-backdrop")).getByRole("button", { name: "Delete" }));
 
     expect(mockDelete).toHaveBeenCalledWith("/users/agent-1");
     await waitFor(() =>
@@ -482,26 +506,14 @@ describe("delete user", () => {
     );
   });
 
-  it("does not delete when the confirm dialog is dismissed", async () => {
-    vi.spyOn(window, "confirm").mockReturnValue(false);
-    renderPage();
-    await screen.findByText("agent@example.com");
-
-    const agentRow = screen.getByText("agent@example.com").closest("tr")!;
-    await userEvent.click(within(agentRow).getByRole("button", { name: "Delete" }));
-
-    expect(mockDelete).not.toHaveBeenCalled();
-    expect(screen.getByText("agent@example.com")).toBeInTheDocument();
-  });
-
   it("shows an action error when DELETE fails", async () => {
-    vi.spyOn(window, "confirm").mockReturnValue(true);
     mockDelete.mockRejectedValue(axiosErr("User not found"));
     renderPage();
     await screen.findByText("agent@example.com");
 
     const agentRow = screen.getByText("agent@example.com").closest("tr")!;
     await userEvent.click(within(agentRow).getByRole("button", { name: "Delete" }));
+    await userEvent.click(within(screen.getByTestId("delete-modal-backdrop")).getByRole("button", { name: "Delete" }));
 
     expect(await screen.findByText("User not found")).toBeInTheDocument();
   });
