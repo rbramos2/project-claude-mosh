@@ -87,6 +87,32 @@ All frontend API calls must use **Axios** and **TanStack Query**.
 
 ---
 
+## Component Tests (Frontend)
+
+**Framework:** Vitest + React Testing Library — configured in `client/vite.config.ts` (`test.environment: "jsdom"`)
+
+**Setup file:** `client/src/test/setup.ts` — imports `@testing-library/jest-dom` matchers globally
+
+**Scripts (run from `client/`):**
+- `bun run test` — run all component tests once (CI mode)
+- `bun run test:watch` — watch mode for development
+
+**Test file location:** co-located with the component, e.g. `client/src/pages/UsersPage.test.tsx`
+
+**Conventions:**
+- Mock axios with stable `vi.hoisted()` fn references so `vi.clearAllMocks()` in `beforeEach` doesn't break the component's module-level `api` instance
+- Use `axios.isAxiosError(e)` in components (not `instanceof AxiosError`) — easier to mock
+- Wrap each render in a fresh `QueryClient` with `retry: false` to avoid cross-test cache bleed
+- Always wrap with `QueryClientProvider` + `MemoryRouter`
+- Mock `../lib/auth-client` (`useSession`) and `../components/Navbar` in every page test
+- Simulate API errors by setting `__isAxiosError: true` and a `response.data.error` field on the thrown object — matches the `axios.isAxiosError` mock check
+- Use `within(row)` for scoped queries inside table rows
+- Use `await screen.findBy*` for async content, `screen.getBy*` for content already in DOM
+
+**Writing tests:** Always write component tests after implementing a frontend feature. Co-locate the test file with the component.
+
+---
+
 ## Testing
 
 **Framework:** Playwright (`@playwright/test`) — installed at root, chromium browser

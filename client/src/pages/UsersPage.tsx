@@ -2,7 +2,7 @@ import { useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
-import axios, { AxiosError } from "axios";
+import axios from "axios";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Navbar } from "../components/Navbar";
 import { useSession } from "../lib/auth-client";
@@ -29,7 +29,7 @@ type CreateUserForm = z.infer<typeof createUserSchema>;
 const api = axios.create({ baseURL: "/api", withCredentials: true });
 
 function apiError(e: unknown): string {
-  if (e instanceof AxiosError) {
+  if (axios.isAxiosError(e)) {
     return e.response?.data?.error ?? e.message;
   }
   return "An unexpected error occurred";
