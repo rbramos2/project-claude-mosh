@@ -215,16 +215,22 @@ describe("create user validation", () => {
   it("shows password too short error", async () => {
     await userEvent.type(screen.getByLabelText("Name"), "Test");
     await userEvent.type(screen.getByLabelText("Email"), "test@example.com");
-    await userEvent.type(screen.getByLabelText("Password"), "short");
+    await userEvent.type(screen.getByLabelText(/^Password/), "short");
     await userEvent.click(screen.getByRole("button", { name: "Create User" }));
     expect(await screen.findByText("Password must be at least 8 characters")).toBeInTheDocument();
   });
 
-  it("shows all field errors at once on empty submission", async () => {
+  it("shows name and email errors at once on empty submission", async () => {
     await userEvent.click(screen.getByRole("button", { name: "Create User" }));
     expect(await screen.findByText("Name is required")).toBeInTheDocument();
     expect(screen.getByText("Email is required")).toBeInTheDocument();
-    expect(screen.getByText("Password must be at least 8 characters")).toBeInTheDocument();
+  });
+
+  it("shows Password is required when only password is missing in create mode", async () => {
+    await userEvent.type(screen.getByLabelText("Name"), "Test");
+    await userEvent.type(screen.getByLabelText("Email"), "test@example.com");
+    await userEvent.click(screen.getByRole("button", { name: "Create User" }));
+    expect(await screen.findByText("Password is required")).toBeInTheDocument();
   });
 });
 
@@ -250,7 +256,7 @@ describe("create user form behaviour", () => {
     await userEvent.click(screen.getByRole("button", { name: "Add User" }));
     await userEvent.type(screen.getByLabelText("Name"), "New User");
     await userEvent.type(screen.getByLabelText("Email"), "new@example.com");
-    await userEvent.type(screen.getByLabelText("Password"), "password123");
+    await userEvent.type(screen.getByLabelText(/^Password/), "password123");
     await userEvent.click(screen.getByRole("button", { name: "Create User" }));
 
     expect(await screen.findByRole("button", { name: "Creating..." })).toBeDisabled();
@@ -265,7 +271,7 @@ describe("create user form behaviour", () => {
     await userEvent.click(screen.getByRole("button", { name: "Add User" }));
     await userEvent.type(screen.getByLabelText("Name"), "Alice");
     await userEvent.type(screen.getByLabelText("Email"), "alice@example.com");
-    await userEvent.type(screen.getByLabelText("Password"), "secret123");
+    await userEvent.type(screen.getByLabelText(/^Password/), "secret123");
     await userEvent.click(screen.getByRole("button", { name: "Create User" }));
 
     await waitFor(() => expect(mockPost).toHaveBeenCalledWith("/users", {
@@ -302,7 +308,7 @@ describe("create user", () => {
     await userEvent.click(screen.getByRole("button", { name: "Add User" }));
     await userEvent.type(screen.getByLabelText("Name"), "New User");
     await userEvent.type(screen.getByLabelText("Email"), "new@example.com");
-    await userEvent.type(screen.getByLabelText("Password"), "password123");
+    await userEvent.type(screen.getByLabelText(/^Password/), "password123");
     await userEvent.click(screen.getByRole("button", { name: "Create User" }));
 
     await waitFor(() =>
@@ -319,11 +325,109 @@ describe("create user", () => {
     await userEvent.click(screen.getByRole("button", { name: "Add User" }));
     await userEvent.type(screen.getByLabelText("Name"), "Admin");
     await userEvent.type(screen.getByLabelText("Email"), "admin@example.com");
-    await userEvent.type(screen.getByLabelText("Password"), "password123");
+    await userEvent.type(screen.getByLabelText(/^Password/), "password123");
     await userEvent.click(screen.getByRole("button", { name: "Create User" }));
 
     expect(await screen.findByText("A user with this email already exists")).toBeInTheDocument();
     expect(screen.getByRole("heading", { name: "New User" })).toBeInTheDocument();
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Edit user
+// ---------------------------------------------------------------------------
+
+describe("edit user", () => {
+  it("shows an Edit button on every row", async () => {
+    renderPage();
+    await screen.findByText("admin@example.com");
+    const dataRows = screen.getAllByRole("row").slice(1);
+    dataRows.forEach((row) => {
+      expect(within(row).getByRole("button", { name: "Edit user" })).toBeInTheDocument();
+    });
+  });
+
+  it("opens 'Edit User' modal pre-populated with the user's data", async () => {
+    renderPage();
+    await screen.findByText("agent@example.com");
+    const agentRow = screen.getByText("agent@example.com").closest("tr")!;
+    await userEvent.click(within(agentRow).getByRole("button", { name: "Edit user" }));
+
+    expect(screen.getByRole("heading", { name: "Edit User" })).toBeInTheDocument();
+    expect(screen.getByLabelText<HTMLInputElement>("Name").value).toBe("Agent");
+    expect(screen.getByLabelText<HTMLInputElement>("Email").value).toBe("agent@example.com");
+    expect(screen.getByLabelText<HTMLInputElement>(/^Password/).value).toBe("");
+  });
+
+  it("PATCHes /users/:id with empty password when no password is provided", async () => {
+    mockPatch.mockResolvedValue({ data: { ...AGENT, name: "Agent Updated" } });
+    renderPage();
+    await screen.findByText("agent@example.com");
+    const agentRow = screen.getByText("agent@example.com").closest("tr")!;
+    await userEvent.click(within(agentRow).getByRole("button", { name: "Edit user" }));
+
+    await userEvent.clear(screen.getByLabelText("Name"));
+    await userEvent.type(screen.getByLabelText("Name"), "Agent Updated");
+    await userEvent.click(screen.getByRole("button", { name: "Save Changes" }));
+
+    await waitFor(() =>
+      expect(mockPatch).toHaveBeenCalledWith("/users/agent-1", {
+        name: "Agent Updated",
+        email: "agent@example.com",
+        password: "",
+      }),
+    );
+  });
+
+  it("includes the new password in PATCH when provided", async () => {
+    mockPatch.mockResolvedValue({ data: AGENT });
+    renderPage();
+    await screen.findByText("agent@example.com");
+    const agentRow = screen.getByText("agent@example.com").closest("tr")!;
+    await userEvent.click(within(agentRow).getByRole("button", { name: "Edit user" }));
+
+    await userEvent.type(screen.getByLabelText(/^Password/), "newpassword123");
+    await userEvent.click(screen.getByRole("button", { name: "Save Changes" }));
+
+    await waitFor(() =>
+      expect(mockPatch).toHaveBeenCalledWith("/users/agent-1", {
+        name: "Agent",
+        email: "agent@example.com",
+        password: "newpassword123",
+      }),
+    );
+  });
+
+  it("closes modal and updates the row in place on success", async () => {
+    mockPatch.mockResolvedValue({ data: { ...AGENT, name: "Agent Renamed" } });
+    renderPage();
+    await screen.findByText("agent@example.com");
+    const agentRow = screen.getByText("agent@example.com").closest("tr")!;
+    await userEvent.click(within(agentRow).getByRole("button", { name: "Edit user" }));
+
+    await userEvent.clear(screen.getByLabelText("Name"));
+    await userEvent.type(screen.getByLabelText("Name"), "Agent Renamed");
+    await userEvent.click(screen.getByRole("button", { name: "Save Changes" }));
+
+    await waitFor(() =>
+      expect(screen.queryByRole("heading", { name: "Edit User" })).not.toBeInTheDocument(),
+    );
+    expect(screen.getByText("Agent Renamed")).toBeInTheDocument();
+  });
+
+  it("keeps modal open and shows server error on failure", async () => {
+    mockPatch.mockRejectedValue(axiosErr("A user with this email already exists"));
+    renderPage();
+    await screen.findByText("agent@example.com");
+    const agentRow = screen.getByText("agent@example.com").closest("tr")!;
+    await userEvent.click(within(agentRow).getByRole("button", { name: "Edit user" }));
+
+    await userEvent.clear(screen.getByLabelText("Email"));
+    await userEvent.type(screen.getByLabelText("Email"), "admin@example.com");
+    await userEvent.click(screen.getByRole("button", { name: "Save Changes" }));
+
+    expect(await screen.findByText("A user with this email already exists")).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Edit User" })).toBeInTheDocument();
   });
 });
 

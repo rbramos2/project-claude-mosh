@@ -13,3 +13,12 @@ export const createUserSchema = z.object({
 export const patchRoleSchema = z.object({
   role: roleEnum,
 });
+
+export const updateUserSchema = z.object({
+  name: z.string().min(1, "Name is required").trim(),
+  email: z.email({ message: "Valid email is required" }),
+  password: z.union([
+    z.literal(""),
+    z.string().min(8, "Password must be at least 8 characters"),
+  ]).optional(),
+});
