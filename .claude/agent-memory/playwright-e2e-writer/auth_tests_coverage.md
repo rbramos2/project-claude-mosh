@@ -60,5 +60,4 @@ type: project
 - Ticket management
 - Task management
 - Knowledge base
-- Admin user management (UsersPage is currently a stub)
 - AI summaries and suggested replies
