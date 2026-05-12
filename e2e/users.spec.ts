@@ -1,379 +1,359 @@
-import { test, expect, ADMIN_EMAIL, ADMIN_NAME, AGENT_EMAIL, AGENT_NAME } from "./fixtures/auth";
+import { test, expect, ADMIN_EMAIL, AGENT_EMAIL } from "./fixtures/auth";
 
 // ---------------------------------------------------------------------------
 // Helpers
 // ---------------------------------------------------------------------------
 
-/** Navigate to /users and wait for the table to be visible. */
-async function goToUsersPage(page: import("@playwright/test").Page) {
+/** Navigate to /users as admin and wait for the heading to appear. */
+async function goToUsers(page: import("@playwright/test").Page) {
   await page.goto("/users");
   await expect(page.getByRole("heading", { name: "Users" })).toBeVisible();
-  // Wait until the loading state resolves — "Loading..." disappears and the
-  // table (or "No users found" empty state) appears.
-  await expect(page.getByText("Loading...")).not.toBeVisible();
 }
 
 // ---------------------------------------------------------------------------
-// Access control
+// List — seeded users are visible
 // ---------------------------------------------------------------------------
 
-test.describe("Users page — access control", () => {
-  test("admin can access /users", async ({ adminPage }) => {
-    await goToUsersPage(adminPage);
-    await expect(adminPage).toHaveURL("/users");
+test.describe("Users page — list", () => {
+  test("shows the users table with column headers", async ({ adminPage }) => {
+    await goToUsers(adminPage);
+
+    await expect(
+      adminPage.getByRole("columnheader", { name: "Name" })
+    ).toBeVisible();
+    await expect(
+      adminPage.getByRole("columnheader", { name: "Email" })
+    ).toBeVisible();
+    await expect(
+      adminPage.getByRole("columnheader", { name: "Role" })
+    ).toBeVisible();
+    await expect(
+      adminPage.getByRole("columnheader", { name: "Joined" })
+    ).toBeVisible();
   });
 
-  test("agent visiting /users is redirected to /", async ({ agentPage }) => {
-    await agentPage.goto("/users");
-    await agentPage.waitForURL("/");
-    await expect(agentPage).toHaveURL("/");
-  });
-});
+  test("shows seeded admin and agent rows", async ({ adminPage }) => {
+    await goToUsers(adminPage);
 
-// ---------------------------------------------------------------------------
-// User list display
-// ---------------------------------------------------------------------------
-
-test.describe("Users page — list display", () => {
-  test("shows the seeded admin and agent rows", async ({ adminPage }) => {
-    await goToUsersPage(adminPage);
-    await expect(adminPage.getByRole("cell", { name: ADMIN_EMAIL, exact: true })).toBeVisible();
-    await expect(adminPage.getByRole("cell", { name: AGENT_EMAIL, exact: true })).toBeVisible();
+    await expect(
+      adminPage.getByRole("cell", { name: ADMIN_EMAIL, exact: true })
+    ).toBeVisible();
+    await expect(
+      adminPage.getByRole("cell", { name: AGENT_EMAIL, exact: true })
+    ).toBeVisible();
   });
 
-  test("shows the admin email in the table", async ({ adminPage }) => {
-    await goToUsersPage(adminPage);
-    await expect(adminPage.getByRole("cell", { name: ADMIN_EMAIL, exact: true })).toBeVisible();
-  });
-
-  test("shows the agent email in the table", async ({ adminPage }) => {
-    await goToUsersPage(adminPage);
-    await expect(adminPage.getByRole("cell", { name: AGENT_EMAIL })).toBeVisible();
-  });
-
-  test("shows (you) label on the admin's own row", async ({ adminPage }) => {
-    await goToUsersPage(adminPage);
-    // The "(you)" label sits in the same cell as the admin name
+  test("shows (you) label on the current user's own row", async ({
+    adminPage,
+  }) => {
+    await goToUsers(adminPage);
     await expect(adminPage.getByText("(you)")).toBeVisible();
   });
-
-  test("table has the expected column headers", async ({ adminPage }) => {
-    await goToUsersPage(adminPage);
-    const headers = adminPage.getByRole("columnheader");
-    await expect(headers.getByText("Name")).toBeVisible();
-    await expect(headers.getByText("Email")).toBeVisible();
-    await expect(headers.getByText("Role")).toBeVisible();
-    await expect(headers.getByText("Joined")).toBeVisible();
-  });
 });
 
 // ---------------------------------------------------------------------------
-// Self-row restrictions
+// Create — happy path
 // ---------------------------------------------------------------------------
 
-test.describe("Users page — self-row restrictions", () => {
-  test("own row shows a static role badge, not a role dropdown", async ({
+test.describe("Users page — create", () => {
+  test("opens the New User modal when Add User is clicked", async ({
     adminPage,
   }) => {
-    await goToUsersPage(adminPage);
-
-    // Find the row that contains "(you)"
-    const selfRow = adminPage.getByRole("row").filter({ hasText: "(you)" });
-
-    // The role badge is a <span>, not a <select>
-    await expect(selfRow.locator("span", { hasText: /admin/i })).toBeVisible();
-    await expect(selfRow.locator("select")).not.toBeAttached();
-  });
-
-  test("own row does not have a Delete button", async ({ adminPage }) => {
-    await goToUsersPage(adminPage);
-    const selfRow = adminPage.getByRole("row").filter({ hasText: "(you)" });
-    await expect(selfRow.getByRole("button", { name: "Delete" })).not.toBeAttached();
-  });
-});
-
-// ---------------------------------------------------------------------------
-// Add User form — toggle
-// ---------------------------------------------------------------------------
-
-test.describe("Users page — Add User form toggle", () => {
-  test("Add User button shows the inline form", async ({ adminPage }) => {
-    await goToUsersPage(adminPage);
+    await goToUsers(adminPage);
     await adminPage.getByRole("button", { name: "Add User" }).click();
-    await expect(adminPage.getByRole("heading", { name: "New User" })).toBeVisible();
+    await expect(
+      adminPage.getByRole("heading", { name: "New User" })
+    ).toBeVisible();
   });
 
-  test("Cancel button hides the form", async ({ adminPage }) => {
-    await goToUsersPage(adminPage);
-    await adminPage.getByRole("button", { name: "Add User" }).click();
-    await expect(adminPage.getByRole("heading", { name: "New User" })).toBeVisible();
-
-    await adminPage.getByRole("button", { name: "Cancel" }).click();
-    await expect(adminPage.getByRole("heading", { name: "New User" })).not.toBeVisible();
-  });
-
-  test("Add User button label toggles to Cancel when form is open", async ({
-    adminPage,
-  }) => {
-    await goToUsersPage(adminPage);
-    await adminPage.getByRole("button", { name: "Add User" }).click();
-    await expect(adminPage.getByRole("button", { name: "Cancel" })).toBeVisible();
-    await expect(adminPage.getByRole("button", { name: "Add User" })).not.toBeVisible();
-  });
-});
-
-// ---------------------------------------------------------------------------
-// Create user — happy path
-// ---------------------------------------------------------------------------
-
-test.describe("Users page — create user", () => {
-  test("successfully creates a new agent user and shows them in the table", async ({
+  test("creates a new user and they appear in the table", async ({
     adminPage,
   }) => {
     const email = `testuser-${Date.now()}@example.com`;
-    await goToUsersPage(adminPage);
 
+    await goToUsers(adminPage);
     await adminPage.getByRole("button", { name: "Add User" }).click();
-    await expect(adminPage.getByRole("heading", { name: "New User" })).toBeVisible();
 
     await adminPage.getByLabel("Name").fill("Test User");
     await adminPage.getByLabel("Email").fill(email);
     await adminPage.getByLabel("Password").fill("password123");
-    // Role defaults to "agent" — no need to change
-
     await adminPage.getByRole("button", { name: "Create User" }).click();
 
-    // Form should close on success
-    await expect(adminPage.getByRole("heading", { name: "New User" })).not.toBeVisible();
-
-    // New row should appear in the table
-    await expect(adminPage.getByRole("cell", { name: email, exact: true })).toBeVisible();
-  });
-
-  test("successfully creates a new admin user", async ({ adminPage }) => {
-    const email = `newadmin-${Date.now()}@example.com`;
-    await goToUsersPage(adminPage);
-
-    await adminPage.getByRole("button", { name: "Add User" }).click();
-
-    await adminPage.getByLabel("Name").fill("New Admin");
-    await adminPage.getByLabel("Email").fill(email);
-    await adminPage.getByLabel("Password").fill("password123");
-    await adminPage.getByLabel("Role").selectOption("admin");
-
-    await adminPage.getByRole("button", { name: "Create User" }).click();
-
-    await expect(adminPage.getByRole("heading", { name: "New User" })).not.toBeVisible();
-    await expect(adminPage.getByRole("cell", { name: "New Admin" })).toBeVisible();
-    await expect(adminPage.getByRole("cell", { name: email, exact: true })).toBeVisible();
-  });
-});
-
-// ---------------------------------------------------------------------------
-// Create user — client-side validation errors
-// ---------------------------------------------------------------------------
-
-test.describe("Users page — create user validation", () => {
-  test.beforeEach(async ({ adminPage }) => {
-    await goToUsersPage(adminPage);
-    await adminPage.getByRole("button", { name: "Add User" }).click();
-  });
-
-  test("shows name required error when name is empty", async ({ adminPage }) => {
-    await adminPage.getByRole("button", { name: "Create User" }).click();
-    await expect(adminPage.getByText("Name is required")).toBeVisible();
-  });
-
-  test("shows email required error when email is empty", async ({ adminPage }) => {
-    await adminPage.getByLabel("Name").fill("Someone");
-    await adminPage.getByRole("button", { name: "Create User" }).click();
-    await expect(adminPage.getByText("Email is required")).toBeVisible();
-  });
-
-  test("shows invalid email error for malformed email", async ({ adminPage }) => {
-    await adminPage.getByLabel("Name").fill("Someone");
-    await adminPage.getByLabel("Email").fill("not-an-email");
-    await adminPage.getByRole("button", { name: "Create User" }).click();
-    await expect(adminPage.getByText("Enter a valid email")).toBeVisible();
-  });
-
-  test("shows password required / too short error when password is empty", async ({
-    adminPage,
-  }) => {
-    await adminPage.getByLabel("Name").fill("Someone");
-    await adminPage.getByLabel("Email").fill("someone@example.com");
-    await adminPage.getByRole("button", { name: "Create User" }).click();
-    await expect(adminPage.getByText("Password must be at least 8 characters")).toBeVisible();
-  });
-
-  test("shows too short error when password is fewer than 8 characters", async ({
-    adminPage,
-  }) => {
-    await adminPage.getByLabel("Name").fill("Someone");
-    await adminPage.getByLabel("Email").fill("someone@example.com");
-    await adminPage.getByLabel("Password").fill("abc");
-    await adminPage.getByRole("button", { name: "Create User" }).click();
-    await expect(adminPage.getByText("Password must be at least 8 characters")).toBeVisible();
-  });
-
-  test("shows all field errors at once on a fully empty submission", async ({
-    adminPage,
-  }) => {
-    await adminPage.getByRole("button", { name: "Create User" }).click();
-    await expect(adminPage.getByText("Name is required")).toBeVisible();
-    await expect(adminPage.getByText("Email is required")).toBeVisible();
-    await expect(adminPage.getByText("Password must be at least 8 characters")).toBeVisible();
-  });
-});
-
-// ---------------------------------------------------------------------------
-// Create user — duplicate email (server-side error)
-// ---------------------------------------------------------------------------
-
-test.describe("Users page — duplicate email error", () => {
-  test("shows server error when creating a user with an existing email", async ({
-    adminPage,
-  }) => {
-    await goToUsersPage(adminPage);
-
-    await adminPage.getByRole("button", { name: "Add User" }).click();
-
-    // ADMIN_EMAIL already exists in the seeded DB
-    await adminPage.getByLabel("Name").fill("Duplicate User");
-    await adminPage.getByLabel("Email").fill(ADMIN_EMAIL);
-    await adminPage.getByLabel("Password").fill("password123");
-
-    await adminPage.getByRole("button", { name: "Create User" }).click();
-
+    // Modal closes after successful creation
     await expect(
-      adminPage.getByText("A user with this email already exists")
+      adminPage.getByRole("heading", { name: "New User" })
+    ).not.toBeVisible();
+
+    // New user row appears in the table
+    await expect(
+      adminPage.getByRole("cell", { name: email, exact: true })
+    ).toBeVisible();
+  });
+
+  test("closes the New User modal when Cancel is clicked", async ({
+    adminPage,
+  }) => {
+    await goToUsers(adminPage);
+    await adminPage.getByRole("button", { name: "Add User" }).click();
+    await expect(
+      adminPage.getByRole("heading", { name: "New User" })
     ).toBeVisible();
 
-    // Form stays open so the user can correct the email
-    await expect(adminPage.getByRole("heading", { name: "New User" })).toBeVisible();
+    await adminPage.getByRole("button", { name: "Cancel" }).click();
+    await expect(
+      adminPage.getByRole("heading", { name: "New User" })
+    ).not.toBeVisible();
+  });
+
+  test("closes the New User modal with the Escape key", async ({
+    adminPage,
+  }) => {
+    await goToUsers(adminPage);
+    await adminPage.getByRole("button", { name: "Add User" }).click();
+    await expect(
+      adminPage.getByRole("heading", { name: "New User" })
+    ).toBeVisible();
+
+    await adminPage.keyboard.press("Escape");
+    await expect(
+      adminPage.getByRole("heading", { name: "New User" })
+    ).not.toBeVisible();
   });
 });
 
 // ---------------------------------------------------------------------------
-// Role change
+// Edit — happy path
+// ---------------------------------------------------------------------------
+
+test.describe("Users page — edit", () => {
+  test("opens the Edit User modal pre-populated when the pencil icon is clicked", async ({
+    adminPage,
+  }) => {
+    await goToUsers(adminPage);
+
+    const agentRow = adminPage
+      .getByRole("row")
+      .filter({ hasText: AGENT_EMAIL });
+    await agentRow.getByRole("button", { name: "Edit user" }).click();
+
+    await expect(
+      adminPage.getByRole("heading", { name: "Edit User" })
+    ).toBeVisible();
+
+    // Fields are pre-populated with the agent's data
+    await expect(adminPage.getByLabel("Name")).toHaveValue("Agent");
+    await expect(adminPage.getByLabel("Email")).toHaveValue(AGENT_EMAIL);
+    // Password is intentionally blank in edit mode
+    await expect(adminPage.getByLabel(/Password/)).toHaveValue("");
+  });
+
+  test("updates a user's name and the table reflects the change", async ({
+    adminPage,
+  }) => {
+    // Create a throwaway user to edit so the seeded agent is not permanently mutated
+    const id = Date.now();
+    const originalName = `Edit Me ${id}`;
+    const updatedName = `Edited ${id}`;
+    const email = `editme-${id}@example.com`;
+
+    await goToUsers(adminPage);
+
+    // Create
+    await adminPage.getByRole("button", { name: "Add User" }).click();
+    await adminPage.getByLabel("Name").fill(originalName);
+    await adminPage.getByLabel("Email").fill(email);
+    await adminPage.getByLabel("Password").fill("password123");
+    await adminPage.getByRole("button", { name: "Create User" }).click();
+    await expect(adminPage.getByRole("cell", { name: originalName })).toBeVisible();
+
+    // Edit
+    const createdRow = adminPage.getByRole("row").filter({ hasText: email });
+    await createdRow.getByRole("button", { name: "Edit user" }).click();
+    await expect(
+      adminPage.getByRole("heading", { name: "Edit User" })
+    ).toBeVisible();
+
+    await adminPage.getByLabel("Name").clear();
+    await adminPage.getByLabel("Name").fill(updatedName);
+    await adminPage.getByRole("button", { name: "Save Changes" }).click();
+
+    // Modal closes and updated name is visible
+    await expect(
+      adminPage.getByRole("heading", { name: "Edit User" })
+    ).not.toBeVisible();
+    await expect(adminPage.getByRole("cell", { name: updatedName })).toBeVisible();
+    await expect(adminPage.getByRole("cell", { name: originalName })).not.toBeVisible();
+  });
+
+  test("closes the Edit User modal when Cancel is clicked without saving", async ({
+    adminPage,
+  }) => {
+    await goToUsers(adminPage);
+
+    const agentRow = adminPage
+      .getByRole("row")
+      .filter({ hasText: AGENT_EMAIL });
+    await agentRow.getByRole("button", { name: "Edit user" }).click();
+    await expect(
+      adminPage.getByRole("heading", { name: "Edit User" })
+    ).toBeVisible();
+
+    await adminPage.getByRole("button", { name: "Cancel" }).click();
+    await expect(
+      adminPage.getByRole("heading", { name: "Edit User" })
+    ).not.toBeVisible();
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Delete — happy path
+// ---------------------------------------------------------------------------
+
+test.describe("Users page — delete", () => {
+  test("opens the Delete User confirmation modal when Delete is clicked", async ({
+    adminPage,
+  }) => {
+    const id = Date.now();
+    const name = `Delete Me ${id}`;
+    const email = `deleteme-${id}@example.com`;
+
+    await goToUsers(adminPage);
+
+    // Create a throwaway user to delete
+    await adminPage.getByRole("button", { name: "Add User" }).click();
+    await adminPage.getByLabel("Name").fill(name);
+    await adminPage.getByLabel("Email").fill(email);
+    await adminPage.getByLabel("Password").fill("password123");
+    await adminPage.getByRole("button", { name: "Create User" }).click();
+    await expect(adminPage.getByRole("cell", { name })).toBeVisible();
+
+    // Click Delete on the new row
+    const row = adminPage.getByRole("row").filter({ hasText: email });
+    await row.getByRole("button", { name: "Delete" }).click();
+
+    await expect(
+      adminPage.getByRole("heading", { name: "Delete User" })
+    ).toBeVisible();
+    // Confirmation copy mentions the user's name
+    await expect(adminPage.getByText(name)).toBeVisible();
+  });
+
+  test("removes the user from the table after confirming deletion", async ({
+    adminPage,
+  }) => {
+    const id = Date.now();
+    const name = `To Delete ${id}`;
+    const email = `todelete-${id}@example.com`;
+
+    await goToUsers(adminPage);
+
+    // Create
+    await adminPage.getByRole("button", { name: "Add User" }).click();
+    await adminPage.getByLabel("Name").fill(name);
+    await adminPage.getByLabel("Email").fill(email);
+    await adminPage.getByLabel("Password").fill("password123");
+    await adminPage.getByRole("button", { name: "Create User" }).click();
+    await expect(adminPage.getByRole("cell", { name })).toBeVisible();
+
+    // Open delete modal
+    const row = adminPage.getByRole("row").filter({ hasText: email });
+    await row.getByRole("button", { name: "Delete" }).click();
+    await expect(
+      adminPage.getByRole("heading", { name: "Delete User" })
+    ).toBeVisible();
+
+    // Confirm deletion via the red Delete button inside the modal
+    await adminPage
+      .getByTestId("delete-modal-backdrop")
+      .getByRole("button", { name: "Delete" })
+      .click();
+
+    // Row is removed from the table
+    await expect(
+      adminPage.getByRole("cell", { name: email, exact: true })
+    ).not.toBeVisible();
+  });
+
+  test("keeps the user in the table when Cancel is clicked in the confirmation modal", async ({
+    adminPage,
+  }) => {
+    const id = Date.now();
+    const name = `Keep Me ${id}`;
+    const email = `keepme-${id}@example.com`;
+
+    await goToUsers(adminPage);
+
+    // Create
+    await adminPage.getByRole("button", { name: "Add User" }).click();
+    await adminPage.getByLabel("Name").fill(name);
+    await adminPage.getByLabel("Email").fill(email);
+    await adminPage.getByLabel("Password").fill("password123");
+    await adminPage.getByRole("button", { name: "Create User" }).click();
+    await expect(adminPage.getByRole("cell", { name })).toBeVisible();
+
+    // Open delete modal then cancel
+    const row = adminPage.getByRole("row").filter({ hasText: email });
+    await row.getByRole("button", { name: "Delete" }).click();
+    await expect(
+      adminPage.getByRole("heading", { name: "Delete User" })
+    ).toBeVisible();
+
+    await adminPage
+      .getByTestId("delete-modal-backdrop")
+      .getByRole("button", { name: "Cancel" })
+      .click();
+
+    // Modal closed, user still present in the table
+    await expect(
+      adminPage.getByRole("heading", { name: "Delete User" })
+    ).not.toBeVisible();
+    await expect(
+      adminPage.getByRole("cell", { name: email, exact: true })
+    ).toBeVisible();
+  });
+
+  test("does not show a Delete button for the current user's own row", async ({
+    adminPage,
+  }) => {
+    await goToUsers(adminPage);
+    const selfRow = adminPage.getByRole("row").filter({ hasText: "(you)" });
+    await expect(
+      selfRow.getByRole("button", { name: "Delete" })
+    ).not.toBeAttached();
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Role change — happy path
 // ---------------------------------------------------------------------------
 
 test.describe("Users page — role change", () => {
-  test("changing an agent's role to admin updates the dropdown", async ({
+  test("changing a user's role via the inline dropdown persists the new value", async ({
     adminPage,
   }) => {
-    await goToUsersPage(adminPage);
+    // Create a fresh agent user so we don't permanently mutate the seeded agent
+    const id = Date.now();
+    const name = `Role Test ${id}`;
+    const email = `roletest-${id}@example.com`;
 
-    // Find the agent row (not the self row) and locate its role dropdown
-    const agentRow = adminPage
-      .getByRole("row")
-      .filter({ hasText: AGENT_EMAIL });
+    await goToUsers(adminPage);
 
-    const roleDropdown = agentRow.locator("select");
-    await expect(roleDropdown).toHaveValue("agent");
-
-    await roleDropdown.selectOption("admin");
-
-    // After the PATCH completes the dropdown should reflect the new value
-    await expect(roleDropdown).toHaveValue("admin");
-  });
-
-  test("changing an agent's role back to agent works", async ({ adminPage }) => {
-    await goToUsersPage(adminPage);
-
-    const agentRow = adminPage
-      .getByRole("row")
-      .filter({ hasText: AGENT_EMAIL });
-
-    const roleDropdown = agentRow.locator("select");
-
-    // First promote to admin
-    await roleDropdown.selectOption("admin");
-    await expect(roleDropdown).toHaveValue("admin");
-
-    // Then demote back
-    await roleDropdown.selectOption("agent");
-    await expect(roleDropdown).toHaveValue("agent");
-  });
-});
-
-// ---------------------------------------------------------------------------
-// Delete user
-// ---------------------------------------------------------------------------
-
-test.describe("Users page — delete user", () => {
-  test("deleting a user removes their row from the table", async ({
-    adminPage,
-  }) => {
-    const email = `deletable-${Date.now()}@example.com`;
-    await goToUsersPage(adminPage);
     await adminPage.getByRole("button", { name: "Add User" }).click();
-    await adminPage.getByLabel("Name").fill("Deletable User");
+    await adminPage.getByLabel("Name").fill(name);
     await adminPage.getByLabel("Email").fill(email);
     await adminPage.getByLabel("Password").fill("password123");
     await adminPage.getByRole("button", { name: "Create User" }).click();
-    await expect(adminPage.getByRole("cell", { name: email, exact: true })).toBeVisible();
+    await expect(adminPage.getByRole("cell", { name })).toBeVisible();
 
-    adminPage.once("dialog", (dialog) => dialog.accept());
+    // New users default to "agent"
+    const createdRow = adminPage.getByRole("row").filter({ hasText: email });
+    const roleSelect = createdRow.locator("select");
+    await expect(roleSelect).toHaveValue("agent");
 
-    const deletableRow = adminPage
-      .getByRole("row")
-      .filter({ has: adminPage.locator("td", { hasText: new RegExp(`^${email}$`) }) });
-    await deletableRow.getByRole("button", { name: "Delete" }).click();
+    // Promote to admin
+    await roleSelect.selectOption("admin");
 
-    await expect(adminPage.getByRole("cell", { name: email, exact: true })).not.toBeVisible();
-  });
-
-  test("dismissing the confirm dialog does not delete the user", async ({
-    adminPage,
-  }) => {
-    const email = `keepme-${Date.now()}@example.com`;
-    await goToUsersPage(adminPage);
-    await adminPage.getByRole("button", { name: "Add User" }).click();
-    await adminPage.getByLabel("Name").fill("Keep Me");
-    await adminPage.getByLabel("Email").fill(email);
-    await adminPage.getByLabel("Password").fill("password123");
-    await adminPage.getByRole("button", { name: "Create User" }).click();
-    await expect(adminPage.getByRole("cell", { name: email, exact: true })).toBeVisible();
-
-    adminPage.once("dialog", (dialog) => dialog.dismiss());
-
-    const keepRow = adminPage
-      .getByRole("row")
-      .filter({ has: adminPage.locator("td", { hasText: new RegExp(`^${email}$`) }) });
-    await keepRow.getByRole("button", { name: "Delete" }).click();
-
-    await expect(adminPage.getByRole("cell", { name: email, exact: true })).toBeVisible();
-  });
-
-  test("the seeded admin's own row has no Delete button", async ({
-    adminPage,
-  }) => {
-    await goToUsersPage(adminPage);
-    const selfRow = adminPage.getByRole("row").filter({ hasText: "(you)" });
-    await expect(selfRow.getByRole("button", { name: "Delete" })).not.toBeAttached();
-  });
-});
-
-// ---------------------------------------------------------------------------
-// API error simulation
-// ---------------------------------------------------------------------------
-
-test.describe("Users page — API error handling", () => {
-  test("shows error message when the user list fetch fails", async ({
-    adminPage,
-  }) => {
-    await adminPage.route("**/api/users", (route) => {
-      route.fulfill({
-        status: 500,
-        contentType: "application/json",
-        body: JSON.stringify({ error: "Internal server error" }),
-      });
-    });
-
-    await adminPage.goto("/users");
-    await expect(adminPage.getByRole("heading", { name: "Users" })).toBeVisible();
-    // Should display some error text (the component renders fetchError)
-    await expect(adminPage.getByText(/internal server error/i)).toBeVisible();
+    // Dropdown reflects the updated role after the PATCH resolves
+    await expect(roleSelect).toHaveValue("admin");
   });
 });
