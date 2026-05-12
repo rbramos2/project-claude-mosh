@@ -87,6 +87,17 @@ All frontend API calls must use **Axios** and **TanStack Query**.
 
 ---
 
+## Backend Validation
+
+Use **Zod** for all request body validation in Express routes.
+
+- Define schemas at the top of the route file (e.g. `createUserSchema`, `patchRoleSchema`)
+- Use `schema.safeParse(req.body)`; on failure, return `res.status(400).json({ error: result.error.errors[0]?.message ?? "Invalid input" })`
+- Never write manual `if (!field || typeof field !== "string")` checks — let Zod handle it
+- Zod is installed in `server/` (`zod@4`)
+
+---
+
 ## Component Tests (Frontend)
 
 **Framework:** Vitest + React Testing Library — configured in `client/vite.config.ts` (`test.environment: "jsdom"`)

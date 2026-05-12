@@ -1,10 +1,24 @@
 import { Router } from "express";
+import { z } from "zod";
 import { requireAdmin } from "../middleware/requireAuth";
 import prisma from "../lib/prisma";
 import { auth } from "../lib/auth";
 import { Role } from "../generated/prisma/enums";
 
 export const usersRouter = Router();
+
+const roleEnum = z.enum(["admin", "agent"]);
+
+const createUserSchema = z.object({
+  name: z.string().min(1, "Name is required").trim(),
+  email: z.email({ message: "Valid email is required" }),
+  password: z.string().min(8, "Password must be at least 8 characters"),
+  role: roleEnum.default("agent"),
+});
+
+const patchRoleSchema = z.object({
+  role: roleEnum,
+});
 
 usersRouter.get("/", requireAdmin, async (_req, res) => {
   const users = await prisma.user.findMany({
@@ -15,24 +29,14 @@ usersRouter.get("/", requireAdmin, async (_req, res) => {
 });
 
 usersRouter.post("/", requireAdmin, async (req, res) => {
-  const { name, email, password, role } = req.body;
+  const result = createUserSchema.safeParse(req.body);
+  if (!result.success) {
+    const message = result.error.issues[0]?.message ?? "Invalid input";
+    res.status(400).json({ error: message });
+    return;
+  }
 
-  if (!name || typeof name !== "string" || name.trim().length === 0) {
-    res.status(400).json({ error: "Name is required" });
-    return;
-  }
-  if (!email || typeof email !== "string" || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
-    res.status(400).json({ error: "Valid email is required" });
-    return;
-  }
-  if (!password || typeof password !== "string" || password.length < 8) {
-    res.status(400).json({ error: "Password must be at least 8 characters" });
-    return;
-  }
-  if (role !== "admin" && role !== "agent") {
-    res.status(400).json({ error: "Role must be admin or agent" });
-    return;
-  }
+  const { name, email, password, role } = result.data;
 
   const existing = await prisma.user.findUnique({ where: { email } });
   if (existing) {
@@ -48,7 +52,7 @@ usersRouter.post("/", requireAdmin, async (req, res) => {
   const user = await prisma.user.create({
     data: {
       id: genId("user"),
-      name: name.trim(),
+      name,
       email,
       emailVerified: true,
       role: role as Role,
@@ -73,15 +77,17 @@ usersRouter.post("/", requireAdmin, async (req, res) => {
 
 usersRouter.patch("/:id/role", requireAdmin, async (req, res) => {
   const id = req.params.id as string;
-  const { role } = req.body;
   const session = (req as any).session;
 
   if (id === session.user.id) {
     res.status(400).json({ error: "Cannot change your own role" });
     return;
   }
-  if (role !== "admin" && role !== "agent") {
-    res.status(400).json({ error: "Role must be admin or agent" });
+
+  const result = patchRoleSchema.safeParse(req.body);
+  if (!result.success) {
+    const message = result.error.issues[0]?.message ?? "Invalid input";
+    res.status(400).json({ error: message });
     return;
   }
 
@@ -93,7 +99,7 @@ usersRouter.patch("/:id/role", requireAdmin, async (req, res) => {
 
   const user = await prisma.user.update({
     where: { id },
-    data: { role: role as Role, updatedAt: new Date() },
+    data: { role: result.data.role as Role, updatedAt: new Date() },
     select: { id: true, name: true, email: true, role: true, createdAt: true },
   });
 
