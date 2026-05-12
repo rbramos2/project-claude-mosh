@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -19,7 +19,7 @@ interface User {
 
 const createUserSchema = z.object({
   name: z.string().min(1, "Name is required"),
-  email: z.email({ message: "Enter a valid email" }),
+  email: z.string().min(1, "Email is required").pipe(z.email({ message: "Enter a valid email" })),
   password: z.string().min(8, "Password must be at least 8 characters"),
 });
 
@@ -101,6 +101,15 @@ export function UsersPage() {
 
   const currentUserId = session?.user.id;
 
+  const closeModal = () => { setShowForm(false); setCreateError(null); reset(); };
+
+  useEffect(() => {
+    if (!showForm) return;
+    const onKey = (e: KeyboardEvent) => { if (e.key === "Escape") closeModal(); };
+    document.addEventListener("keydown", onKey);
+    return () => document.removeEventListener("keydown", onKey);
+  }, [showForm]);
+
   return (
     <div className="min-h-screen bg-gray-50">
       <Navbar />
@@ -121,14 +130,9 @@ export function UsersPage() {
 
         {showForm && (
           <div
+            data-testid="modal-backdrop"
             className="fixed inset-0 z-50 flex items-center justify-center bg-black/40"
-            onClick={(e) => {
-              if (e.target === e.currentTarget) {
-                setShowForm(false);
-                setCreateError(null);
-                reset();
-              }
-            }}
+            onClick={(e) => { if (e.target === e.currentTarget) closeModal(); }}
           >
             <div className="bg-white rounded-xl shadow-lg w-full max-w-md mx-4 p-6">
               <div className="flex items-center justify-between mb-5">
@@ -136,11 +140,7 @@ export function UsersPage() {
                   New User
                 </h2>
                 <button
-                  onClick={() => {
-                    setShowForm(false);
-                    setCreateError(null);
-                    reset();
-                  }}
+                  onClick={closeModal}
                   className="text-gray-400 hover:text-gray-600 text-lg leading-none"
                   aria-label="Close"
                 >
@@ -223,11 +223,7 @@ export function UsersPage() {
                 <div className="flex justify-end gap-2 pt-1">
                   <button
                     type="button"
-                    onClick={() => {
-                      setShowForm(false);
-                      setCreateError(null);
-                      reset();
-                    }}
+                    onClick={closeModal}
                     className="text-sm px-4 py-2 rounded-md border border-gray-300 text-gray-700 hover:bg-gray-50 transition-colors"
                   >
                     Cancel

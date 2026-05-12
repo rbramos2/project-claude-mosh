@@ -95,7 +95,8 @@ Use **Zod** for all request body validation in Express routes.
 - Use `schema.safeParse(req.body)`; on failure, return `res.status(400).json({ error: result.error.issues[0]?.message ?? "Invalid input" })`
 - Never write manual `if (!field || typeof field !== "string")` checks — let Zod handle it
 - For enum fields, derive from the Prisma-generated const enum — never hardcode string literals: `z.enum(Object.values(Role) as [Role, ...Role[]])`
-- Zod is installed in `server/` (`zod@4`); use top-level format helpers (`z.email()`, `z.uuid()`) — `z.string().email()` is deprecated in v4
+- Zod is installed in `server/` and `client/` (`zod@4`); use top-level format helpers (`z.email()`, `z.uuid()`) — `z.string().email()` is deprecated in v4
+- For fields that need both a "required" and a "format" error, use `.pipe()`: `z.string().min(1, "Email is required").pipe(z.email({ message: "Enter a valid email" }))` — this gives distinct messages for empty vs invalid, and works correctly with `zodResolver`
 
 ---
 

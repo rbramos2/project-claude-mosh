@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { render, screen, waitFor, within } from "@testing-library/react";
+import { render, screen, waitFor, within, fireEvent } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { MemoryRouter } from "react-router-dom";
@@ -165,6 +165,22 @@ describe("Add User form", () => {
     await userEvent.click(screen.getByRole("button", { name: "Cancel" }));
     expect(screen.queryByRole("heading", { name: "New User" })).not.toBeInTheDocument();
   });
+
+  it("hides when clicking the backdrop outside the modal", async () => {
+    renderPage();
+    await screen.findByText("admin@example.com");
+    await userEvent.click(screen.getByRole("button", { name: "Add User" }));
+    fireEvent.click(screen.getByTestId("modal-backdrop"));
+    expect(screen.queryByRole("heading", { name: "New User" })).not.toBeInTheDocument();
+  });
+
+  it("hides when Escape is pressed", async () => {
+    renderPage();
+    await screen.findByText("admin@example.com");
+    await userEvent.click(screen.getByRole("button", { name: "Add User" }));
+    await userEvent.keyboard("{Escape}");
+    expect(screen.queryByRole("heading", { name: "New User" })).not.toBeInTheDocument();
+  });
 });
 
 // ---------------------------------------------------------------------------
@@ -209,6 +225,66 @@ describe("create user validation", () => {
     expect(await screen.findByText("Name is required")).toBeInTheDocument();
     expect(screen.getByText("Email is required")).toBeInTheDocument();
     expect(screen.getByText("Password must be at least 8 characters")).toBeInTheDocument();
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Create user — form behaviour
+// ---------------------------------------------------------------------------
+
+describe("create user form behaviour", () => {
+  it("hides when the × button is clicked", async () => {
+    renderPage();
+    await screen.findByText("admin@example.com");
+    await userEvent.click(screen.getByRole("button", { name: "Add User" }));
+    await userEvent.click(screen.getByRole("button", { name: "Close" }));
+    expect(screen.queryByRole("heading", { name: "New User" })).not.toBeInTheDocument();
+  });
+
+  it("shows 'Creating…' on the submit button while the request is in flight", async () => {
+    let resolve!: (v: unknown) => void;
+    mockPost.mockReturnValue(new Promise((r) => { resolve = r; }));
+    renderPage();
+    await screen.findByText("admin@example.com");
+
+    await userEvent.click(screen.getByRole("button", { name: "Add User" }));
+    await userEvent.type(screen.getByLabelText("Name"), "New User");
+    await userEvent.type(screen.getByLabelText("Email"), "new@example.com");
+    await userEvent.type(screen.getByLabelText("Password"), "password123");
+    await userEvent.click(screen.getByRole("button", { name: "Create User" }));
+
+    expect(await screen.findByRole("button", { name: "Creating..." })).toBeDisabled();
+    resolve({ data: { id: "x", name: "New User", email: "new@example.com", role: "agent", createdAt: "" } });
+  });
+
+  it("POSTs name, email and password to /users", async () => {
+    mockPost.mockResolvedValue({ data: { id: "x", name: "Alice", email: "alice@example.com", role: "agent", createdAt: "" } });
+    renderPage();
+    await screen.findByText("admin@example.com");
+
+    await userEvent.click(screen.getByRole("button", { name: "Add User" }));
+    await userEvent.type(screen.getByLabelText("Name"), "Alice");
+    await userEvent.type(screen.getByLabelText("Email"), "alice@example.com");
+    await userEvent.type(screen.getByLabelText("Password"), "secret123");
+    await userEvent.click(screen.getByRole("button", { name: "Create User" }));
+
+    await waitFor(() => expect(mockPost).toHaveBeenCalledWith("/users", {
+      name: "Alice",
+      email: "alice@example.com",
+      password: "secret123",
+    }));
+  });
+
+  it("resets fields when the modal is closed and reopened", async () => {
+    renderPage();
+    await screen.findByText("admin@example.com");
+
+    await userEvent.click(screen.getByRole("button", { name: "Add User" }));
+    await userEvent.type(screen.getByLabelText("Name"), "Half-typed");
+    await userEvent.click(screen.getByRole("button", { name: "Cancel" }));
+
+    await userEvent.click(screen.getByRole("button", { name: "Add User" }));
+    expect(screen.getByLabelText<HTMLInputElement>("Name").value).toBe("");
   });
 });
 
