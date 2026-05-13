@@ -32,6 +32,12 @@ export default async function globalSetup() {
     stdio: "inherit",
   });
 
+  execSync("~/.bun/bin/bun run src/cleanup-test-tickets.ts", {
+    cwd: serverDir,
+    env,
+    stdio: "inherit",
+  });
+
   execSync("~/.bun/bin/bun run src/seed.ts", {
     cwd: serverDir,
     env,
@@ -39,6 +45,12 @@ export default async function globalSetup() {
   });
 
   execSync("~/.bun/bin/bun run src/seed-agent.ts", {
+    cwd: serverDir,
+    env,
+    stdio: "inherit",
+  });
+
+  execSync("~/.bun/bin/bun run src/seed-gmail-sync-state.ts", {
     cwd: serverDir,
     env,
     stdio: "inherit",

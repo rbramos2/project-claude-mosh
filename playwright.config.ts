@@ -35,6 +35,8 @@ export default defineConfig({
         BETTER_AUTH_URL: "http://localhost:3000",
         TRUSTED_ORIGINS: "http://localhost:5173",
         NODE_ENV: "test",
+        GMAIL_WEBHOOK_SECRET: "test-webhook-secret",
+        GMAIL_MOCK: "true",
       },
     },
     {

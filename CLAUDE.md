@@ -126,7 +126,25 @@ Use **Zod** for all request body validation in Express routes.
 
 ---
 
-## Testing
+## Testing Strategy
+
+**Default to component tests.** E2E tests are slow, require running servers, and leak test data into the dev DB if the dev server is reused. Use them only when the behaviour cannot be verified without a real browser and real server.
+
+### Use component tests for:
+- Form validation (client-side errors, field rules)
+- UI state (modals open/close, loading states, empty states, error messages)
+- API interaction (mock axios — verify correct calls and cache updates)
+- Role/permission rendering (mock `useSession` with different roles)
+- Any behaviour that can be exercised by rendering a component with mocked dependencies
+
+### Use E2E tests only for:
+- Real authentication flows (login, logout, session cookies)
+- Session persistence and protected route redirects
+- Role-based routing guards (admin vs agent)
+- Backend webhook or API endpoints that require a real running server
+- Flows that span multiple pages and depend on real server state
+
+### Playwright setup
 
 **Framework:** Playwright (`@playwright/test`) — installed at root, chromium browser
 
@@ -144,7 +162,9 @@ Use **Zod** for all request body validation in Express routes.
 
 **Test credentials:** `admin@example.com` / `password123` (role: admin), `agent@example.com` / `password123` (role: agent)
 
-**Writing tests:** Always use the `playwright-e2e-writer` agent to write E2E tests. Invoke it after implementing a feature or when the user asks for tests. It has full context on the test setup, credentials, fixtures, and project conventions.
+**Important:** Always stop the dev server before running `bun run test:e2e`. Playwright reuses any process already on port 3000, which won't have the test env vars (`GMAIL_WEBHOOK_SECRET`, `GMAIL_MOCK`, test DB URL).
+
+**Writing E2E tests:** Use the `playwright-e2e-writer` agent only for flows that genuinely require a real browser. It has full context on the test setup, credentials, fixtures, and project conventions.
 
 ---
 

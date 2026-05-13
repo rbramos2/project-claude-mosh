@@ -14,6 +14,12 @@ export function Navbar() {
     <nav className="bg-white border-b border-gray-200 px-6 py-3 flex items-center justify-between">
       <Link to="/" className="font-semibold text-gray-800 hover:text-gray-600 transition-colors">Helpdesk</Link>
       <div className="flex items-center gap-4">
+        <Link
+          to="/tickets"
+          className="text-sm px-3 py-1.5 rounded-md bg-blue-50 hover:bg-blue-100 text-blue-700 font-medium transition-colors"
+        >
+          Tickets
+        </Link>
         {session?.user.role === "admin" && (
           <Link
             to="/users"
