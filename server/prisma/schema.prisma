@@ -20,10 +20,11 @@ model User {
   image         String?
   createdAt     DateTime
   updatedAt     DateTime
-  role          Role      @default(agent)
-  deletedAt     DateTime?
-  sessions      Session[]
-  accounts      Account[]
+  role            Role      @default(agent)
+  deletedAt       DateTime?
+  sessions        Session[]
+  accounts        Account[]
+  assignedTickets Ticket[]
 }
 
 model Session {
@@ -70,9 +71,22 @@ enum TicketStatus {
   pending
 }
 
+enum TicketCategory {
+  billing
+  technical
+  account
+  feature_request
+  general
+}
+
 enum MessageDirection {
   inbound
   outbound
+}
+
+enum SenderType {
+  agent
+  customer
 }
 
 model Ticket {
@@ -81,7 +95,10 @@ model Ticket {
   status        TicketStatus @default(open)
   clientEmail   String
   gmailThreadId String       @unique
-  createdAt     DateTime     @default(now())
+  assignedToId  String?
+  assignedTo    User?          @relation(fields: [assignedToId], references: [id])
+  category      TicketCategory @default(general)
+  createdAt     DateTime       @default(now())
   updatedAt     DateTime     @updatedAt
   messages      Message[]
 }
@@ -92,8 +109,9 @@ model Message {
   ticket         Ticket           @relation(fields: [ticketId], references: [id])
   body           String
   sender         String
+  senderType     SenderType
   direction      MessageDirection
-  gmailMessageId String           @unique
+  gmailMessageId String?          @unique
   createdAt      DateTime         @default(now())
 }
 

@@ -66,6 +66,7 @@ export const gmailWebhook: RequestHandler = async (req, res) => {
           create: {
             body,
             sender: from,
+            senderType: "customer",
             direction: "inbound",
             gmailMessageId: messageId,
           },
@@ -78,6 +79,7 @@ export const gmailWebhook: RequestHandler = async (req, res) => {
           create: {
             body,
             sender: from,
+            senderType: "customer",
             direction: "inbound",
             gmailMessageId: messageId,
           },
