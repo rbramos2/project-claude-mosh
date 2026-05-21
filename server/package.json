@@ -9,7 +9,8 @@
     "lint": "tsc --noEmit",
     "seed": "~/.bun/bin/bun run src/seed.ts",
     "seed:tickets": "~/.bun/bin/bun run src/seed-tickets.ts",
-    "gmail:setup": "~/.bun/bin/bun run src/scripts/gmail-setup.ts"
+    "gmail:setup": "~/.bun/bin/bun run src/scripts/gmail-setup.ts",
+    "test": "~/.bun/bin/bun test"
   },
   "dependencies": {
     "@prisma/adapter-pg": "^7.8.0",
