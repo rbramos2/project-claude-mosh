@@ -30,10 +30,45 @@ type: project
 - The edit button uses `aria-label="Edit user"` — targeted with `getByRole("button", { name: "Edit user" })`.
 
 ### Features NOT yet tested (future work)
-- Ticket management
 - Task management
 - Knowledge base
 - AI summaries and suggested replies
+
+---
+
+## File: `e2e/ticket-detail.spec.ts`
+
+### Covered scenarios (10 tests across 7 describe blocks, all under one `test.describe("TicketDetailPage")`)
+
+1. **Navigation** — clicking a ticket row on `/tickets` navigates to `/tickets/:id`; "All tickets" back button returns to `/tickets`
+
+2. **Layout** — subject heading, client email (`customer@example.com`), and message count (`/\d+ messages?/`) are all visible
+
+3. **Message thread** — the "customer" badge is visible for the inbound mock message
+
+4. **Status change** — admin selects "closed" from combobox index 0; value updates; persists after reload; test resets status to "open" via API before and after
+
+5. **Category change** — admin selects "billing" from combobox index 1; persists after reload; original category restored via API
+
+6. **Assign (admin)** — ticket unassigned via API first; admin assign dropdown (combobox index 2) starts at ""; agent selected by ID (fetched from `/api/agents`); then unassigned back to ""
+
+7. **Assign (agent)** — ticket unassigned via a fresh admin browser context; agent sees "Assign to me" button; after click shows "You" text; button disappears
+
+8. **Reply form happy path** — Send disabled when empty; fill textarea; Send enabled; click; new message body appears in thread; textarea clears; "agent" badge visible
+
+9. **Reply form empty** — Send disabled when empty; disabled for whitespace-only input (component trims)
+
+10. **Protected route** — fresh browser context with no session navigates to `/tickets/:id` and is redirected to `/login`
+
+### Key decisions / gotchas
+
+- `beforeAll` creates one shared ticket via `getOrCreateTicketId` (webhook trigger + ticket list fetch). Individual tests navigate to the detail page themselves.
+- `getOrCreateTicketId` must be called from a page already holding a session cookie (requireAuth on `GET /api/tickets`). `beforeAll` spins up its own admin browser context for this.
+- The three `<select>` controls on the detail page map to: `nth(0)` = status, `nth(1)` = category, `nth(2)` = assign (admin only). This matches the DOM order in `TicketDetailPage.tsx`.
+- Assign tests reset the ticket to "unassigned" via `PATCH /api/tickets/:id/assign` with `{ userId: null }` before asserting. Only admins can unassign — the agent assign test opens a temporary admin context to do the reset.
+- The "Assign to me" button is matched with `getByRole("button", { name: /assign to me/i })`. After self-assignment it is replaced by the text "You" (not a button).
+- `AGENT_NAME` is imported from the auth fixture (`"Agent"`) — used to find the agent in the `/api/agents` list.
+- Ticket status/category are restored after mutation tests so subsequent tests in the suite see a clean ticket state.
 
 ---
 

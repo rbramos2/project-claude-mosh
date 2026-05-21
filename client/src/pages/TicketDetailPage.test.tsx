@@ -9,14 +9,15 @@ import { TicketDetailPage } from "./TicketDetailPage";
 // Mocks
 // ---------------------------------------------------------------------------
 
-const { mockGet, mockPatch } = vi.hoisted(() => ({
+const { mockGet, mockPatch, mockPost } = vi.hoisted(() => ({
   mockGet: vi.fn(),
   mockPatch: vi.fn(),
+  mockPost: vi.fn(),
 }));
 
 vi.mock("axios", () => ({
   default: {
-    create: vi.fn(() => ({ get: mockGet, patch: mockPatch })),
+    create: vi.fn(() => ({ get: mockGet, patch: mockPatch, post: mockPost })),
     isAxiosError: (e: unknown) => (e as any).__isAxiosError === true,
   },
 }));
@@ -394,5 +395,187 @@ describe("TicketDetailPage — assign (agent role)", () => {
     await screen.findByText("Login issue");
     expect(screen.getByText("Bob")).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "Assign to me" })).not.toBeInTheDocument();
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Message thread — senderType rendering
+// ---------------------------------------------------------------------------
+
+describe("TicketDetailPage — message thread", () => {
+  it("renders agent messages aligned right with 'agent' badge", async () => {
+    mockGet.mockImplementation((url: string) => {
+      if (url === "/agents") return Promise.resolve({ data: [] });
+      return Promise.resolve({
+        data: makeTicket({
+          messages: [
+            {
+              id: "msg-a",
+              body: "Agent reply here",
+              sender: "agent@helpdesk.com",
+              senderType: "agent",
+              direction: "outbound",
+              createdAt: "2024-01-01T10:00:00.000Z",
+            },
+          ],
+        }),
+      });
+    });
+    renderPage();
+    expect(await screen.findByText("Agent reply here")).toBeInTheDocument();
+    expect(screen.getByText("agent")).toBeInTheDocument();
+  });
+
+  it("renders customer messages with 'customer' badge", async () => {
+    mockGet.mockImplementation((url: string) => {
+      if (url === "/agents") return Promise.resolve({ data: [] });
+      return Promise.resolve({
+        data: makeTicket({
+          messages: [
+            {
+              id: "msg-c",
+              body: "Customer question",
+              sender: "customer@example.com",
+              senderType: "customer",
+              direction: "inbound",
+              createdAt: "2024-01-01T09:00:00.000Z",
+            },
+          ],
+        }),
+      });
+    });
+    renderPage();
+    expect(await screen.findByText("Customer question")).toBeInTheDocument();
+    expect(screen.getByText("customer")).toBeInTheDocument();
+  });
+
+  it("renders an empty state gracefully when there are no messages", async () => {
+    mockGet.mockImplementation((url: string) => {
+      if (url === "/agents") return Promise.resolve({ data: [] });
+      return Promise.resolve({ data: makeTicket({ messages: [] }) });
+    });
+    renderPage();
+    await screen.findByText("Login issue");
+    expect(screen.getByText("0 messages")).toBeInTheDocument();
+  });
+});
+
+// ---------------------------------------------------------------------------
+// ReplyForm
+// ---------------------------------------------------------------------------
+
+describe("TicketDetailPage — ReplyForm", () => {
+  it("renders the textarea and Send reply button", async () => {
+    renderPage();
+    await screen.findByText("Login issue");
+    expect(screen.getByPlaceholderText("Write a reply…")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /send reply/i })).toBeInTheDocument();
+  });
+
+  it("Send reply button is disabled when textarea is empty", async () => {
+    renderPage();
+    await screen.findByText("Login issue");
+    expect(screen.getByRole("button", { name: /send reply/i })).toBeDisabled();
+  });
+
+  it("Send reply button is disabled when textarea contains only whitespace", async () => {
+    renderPage();
+    await screen.findByText("Login issue");
+    await userEvent.type(screen.getByPlaceholderText("Write a reply…"), "   ");
+    expect(screen.getByRole("button", { name: /send reply/i })).toBeDisabled();
+  });
+
+  it("Send reply button is enabled after typing text", async () => {
+    renderPage();
+    await screen.findByText("Login issue");
+    await userEvent.type(screen.getByPlaceholderText("Write a reply…"), "Hello");
+    expect(screen.getByRole("button", { name: /send reply/i })).toBeEnabled();
+  });
+
+  it("calls POST /tickets/:id/messages with trimmed body on submit", async () => {
+    mockPost.mockResolvedValue({
+      data: {
+        id: "msg-new",
+        body: "Hello there",
+        sender: "agent@helpdesk.com",
+        senderType: "agent",
+        direction: "outbound",
+        createdAt: new Date().toISOString(),
+      },
+    });
+    renderPage();
+    await screen.findByText("Login issue");
+    await userEvent.type(screen.getByPlaceholderText("Write a reply…"), "  Hello there  ");
+    await userEvent.click(screen.getByRole("button", { name: /send reply/i }));
+    expect(mockPost).toHaveBeenCalledWith("/tickets/ticket-1/messages", { body: "Hello there" });
+  });
+
+  it("clears the textarea after a successful submit", async () => {
+    mockPost.mockResolvedValue({
+      data: {
+        id: "msg-new",
+        body: "Hello",
+        sender: "agent@helpdesk.com",
+        senderType: "agent",
+        direction: "outbound",
+        createdAt: new Date().toISOString(),
+      },
+    });
+    renderPage();
+    await screen.findByText("Login issue");
+    const textarea = screen.getByPlaceholderText("Write a reply…");
+    await userEvent.type(textarea, "Hello");
+    await userEvent.click(screen.getByRole("button", { name: /send reply/i }));
+    await waitFor(() => expect(textarea).toHaveValue(""));
+  });
+
+  it("appends the new message to the thread after successful submit", async () => {
+    const newMessage = {
+      id: "msg-new",
+      body: "New reply from agent",
+      sender: "agent@helpdesk.com",
+      senderType: "agent",
+      direction: "outbound",
+      createdAt: new Date().toISOString(),
+    };
+    mockPost.mockResolvedValue({ data: newMessage });
+    renderPage();
+    await screen.findByText("Login issue");
+    await userEvent.type(screen.getByPlaceholderText("Write a reply…"), "New reply from agent");
+    await userEvent.click(screen.getByRole("button", { name: /send reply/i }));
+    expect(await screen.findByText("New reply from agent")).toBeInTheDocument();
+  });
+
+  it("disables the Send reply button while the mutation is in flight", async () => {
+    let resolve!: (v: unknown) => void;
+    mockPost.mockReturnValue(new Promise((res) => { resolve = res; }));
+    renderPage();
+    await screen.findByText("Login issue");
+    await userEvent.type(screen.getByPlaceholderText("Write a reply…"), "Hello");
+    await userEvent.click(screen.getByRole("button", { name: /send reply/i }));
+    expect(screen.getByRole("button", { name: /sending/i })).toBeDisabled();
+    resolve({
+      data: {
+        id: "msg-new", body: "Hello", sender: "agent@helpdesk.com",
+        senderType: "agent", direction: "outbound", createdAt: new Date().toISOString(),
+      },
+    });
+  });
+
+  it("shows an error message when the POST fails", async () => {
+    mockPost.mockRejectedValue(axiosErr("Failed to send reply"));
+    renderPage();
+    await screen.findByText("Login issue");
+    await userEvent.type(screen.getByPlaceholderText("Write a reply…"), "Hello");
+    await userEvent.click(screen.getByRole("button", { name: /send reply/i }));
+    expect(await screen.findByText("Failed to send reply")).toBeInTheDocument();
+  });
+
+  it("does not submit when the form is submitted with an empty body", async () => {
+    renderPage();
+    await screen.findByText("Login issue");
+    const form = screen.getByPlaceholderText("Write a reply…").closest("form")!;
+    form.dispatchEvent(new Event("submit", { bubbles: true }));
+    expect(mockPost).not.toHaveBeenCalled();
   });
 });

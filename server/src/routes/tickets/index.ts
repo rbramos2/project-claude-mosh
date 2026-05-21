@@ -102,7 +102,7 @@ ticketsRouter.patch("/:id", requireAuth, async (req, res) => {
 });
 
 const replySchema = z.object({
-  body: z.string().min(1, "Reply body is required"),
+  body: z.string().min(1, "Reply body is required").max(5000, "Reply must be 5000 characters or fewer"),
 });
 
 ticketsRouter.post("/:id/messages", requireAuth, async (req, res) => {

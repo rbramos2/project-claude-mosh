@@ -18,11 +18,11 @@ interface User {
 }
 
 const userFormSchema = z.object({
-  name: z.string().min(1, "Name is required"),
-  email: z.string().min(1, "Email is required").pipe(z.email({ message: "Enter a valid email" })),
+  name: z.string().min(1, "Name is required").max(100, "Name must be 100 characters or fewer"),
+  email: z.string().min(1, "Email is required").max(254).pipe(z.email({ message: "Enter a valid email" })),
   password: z.union([
     z.literal(""),
-    z.string().min(8, "Password must be at least 8 characters"),
+    z.string().min(8, "Password must be at least 8 characters").max(128, "Password must be 128 characters or fewer"),
   ]),
 });
 
@@ -209,6 +209,7 @@ export function UsersPage() {
                   <input
                     id="user-name"
                     type="text"
+                    maxLength={100}
                     autoFocus
                     {...register("name")}
                     className={`border rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:border-transparent ${errors.name ? "border-red-500 focus:ring-red-500" : "border-gray-300 focus:ring-blue-500"}`}
@@ -225,6 +226,7 @@ export function UsersPage() {
                   <input
                     id="user-email"
                     type="email"
+                    maxLength={254}
                     autoComplete="off"
                     {...register("email")}
                     className={`border rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:border-transparent ${errors.email ? "border-red-500 focus:ring-red-500" : "border-gray-300 focus:ring-blue-500"}`}
@@ -246,6 +248,7 @@ export function UsersPage() {
                   <input
                     id="user-password"
                     type="password"
+                    maxLength={128}
                     autoComplete="new-password"
                     {...register("password")}
                     className={`border rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:border-transparent ${errors.password ? "border-red-500 focus:ring-red-500" : "border-gray-300 focus:ring-blue-500"}`}

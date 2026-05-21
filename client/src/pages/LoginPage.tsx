@@ -6,8 +6,8 @@ import { useNavigate } from "react-router-dom";
 import { signIn } from "../lib/auth-client";
 
 const schema = z.object({
-  email: z.string().min(1, "Email is required").pipe(z.email({ message: "Enter a valid email" })),
-  password: z.string().min(1, "Password is required"),
+  email: z.string().min(1, "Email is required").max(254).pipe(z.email({ message: "Enter a valid email" })),
+  password: z.string().min(1, "Password is required").max(128),
 });
 
 type FormData = z.infer<typeof schema>;
@@ -43,6 +43,7 @@ export function LoginPage() {
             <input
               id="email"
               type="email"
+              maxLength={254}
               {...register("email")}
               className={`border rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:border-transparent ${errors.email ? "border-red-500 focus:ring-red-500" : "border-gray-300 focus:ring-blue-500"}`}
             />
@@ -58,6 +59,7 @@ export function LoginPage() {
             <input
               id="password"
               type="password"
+              maxLength={128}
               {...register("password")}
               className={`border rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:border-transparent ${errors.password ? "border-red-500 focus:ring-red-500" : "border-gray-300 focus:ring-blue-500"}`}
             />

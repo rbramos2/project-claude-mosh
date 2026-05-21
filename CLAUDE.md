@@ -143,6 +143,17 @@ Use **Zod** for all request body validation in Express routes.
 - Role-based routing guards (admin vs agent)
 - Backend webhook or API endpoints that require a real running server
 - Flows that span multiple pages and depend on real server state
+- **DB persistence** — verifying a change survives a page reload (proves the real DB write, not just an optimistic cache update)
+- **Real role enforcement** — server-side permission checks that component tests can only mock
+
+### When writing E2E tests, remove anything already covered by component tests:
+- UI rendering (headings, labels, badges, message bodies)
+- Client-side disabled/enabled states
+- Error messages from mocked API calls
+- Cache updates after mutations
+- Any behaviour fully exercisable by rendering a component with mocked dependencies
+
+If a scenario can be covered by a component test, it must be — E2E tests should only contain what genuinely requires a real browser and real server.
 
 ### Playwright setup
 

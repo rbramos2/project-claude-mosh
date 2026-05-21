@@ -1,6 +1,7 @@
 import { useParams, useNavigate } from "react-router-dom";
 import axios from "axios";
 import { useState } from "react";
+import DOMPurify from "dompurify";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Navbar } from "../components/Navbar";
 import { useSession } from "../lib/auth-client";
@@ -269,6 +270,7 @@ function ReplyForm({ ticketId }: { ticketId: string }) {
           onChange={(e) => setBody(e.target.value)}
           placeholder="Write a reply…"
           rows={4}
+          maxLength={5000}
           className="w-full px-4 pt-3 pb-2 text-sm text-gray-800 placeholder-gray-400 resize-none focus:outline-none"
         />
         <div className="flex items-center justify-between px-4 py-2 border-t border-gray-100 bg-gray-50">
@@ -393,7 +395,10 @@ export function TicketDetailPage() {
                           {isAgent ? "agent" : "customer"}
                         </span>
                       </div>
-                      <p className="text-sm whitespace-pre-wrap leading-relaxed">{msg.body}</p>
+                      <p
+                        className="text-sm whitespace-pre-wrap leading-relaxed"
+                        dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(msg.body) }}
+                      />
                       <p className={`text-xs mt-2 ${isAgent ? "text-blue-300" : "text-gray-400"}`}>
                         {formatDate(msg.createdAt)}
                       </p>

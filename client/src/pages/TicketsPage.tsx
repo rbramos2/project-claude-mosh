@@ -407,6 +407,7 @@ export function TicketsPage() {
             <input
               ref={searchRef}
               type="text"
+              maxLength={200}
               placeholder="Search subject or email…"
               value={searchInput}
               onChange={(e) => setSearchInput(e.target.value)}
